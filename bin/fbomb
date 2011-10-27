@@ -31,6 +31,9 @@ Main {
 
   def load_room!
     @domain, @token, room = config[:campfire].slice(:domain, :token, :room).values
+    # parse the env varible (don't eval b/c its scary) and then get the matching
+    # ENV var for the token if the token starts with ENV[
+    @token = ENV[$1] if @token.match(/^ENV\[[\'\"](.*)[\'\"]\]/)
     @campfire = FBomb::Campfire.new(@domain, :token => @token)
     @campfire.token = @token
     @room = @campfire.room_for(room)
