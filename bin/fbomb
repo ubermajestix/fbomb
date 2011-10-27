@@ -79,7 +79,7 @@ Main {
       FBomb::Command.room = @room
       @room.join
       at_exit{ @room.leave }
-      @room.speak("fbomb in da house...")
+      FBomb::Command.table["/in_da_house"].call
 
       url = URI.parse("http://#{ @token }:x@streaming.campfirenow.com//room/#{ @room.id }/live.json")
 
@@ -88,7 +88,7 @@ Main {
       loop do
         logging_errors do
           
-          Yajl::HttpStream.get(url) do |message|
+          Yajl::HttpStream.get(url, "User-Agent" => '') do |message|
             case message['type'].to_s
               when 'TextMessage'
                 body = message['body'].to_s
