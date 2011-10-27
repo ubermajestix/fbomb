@@ -30,7 +30,7 @@ Main {
   end
 
   def load_room!
-    @domain, @token, room = config[:campfire].slice(:domain, :token, :room).values
+    @domain, @token, room = parse_config
     # parse the env varible (don't eval b/c its scary) and then get the matching
     # ENV var for the token if the token starts with ENV[
     @token = ENV[$1] if @token.match(/^ENV\[[\'\"](.*)[\'\"]\]/)
@@ -38,6 +38,16 @@ Main {
     @campfire.token = @token
     @room = @campfire.room_for(room)
     FBomb::Command.room = @room
+  end
+  
+  def parse_config
+    config[:campfire].slice(:domain, :token, :room).values.collect do |value|
+      parse_config_from_env(value)
+    end
+  end
+  
+  def parse_config_from_env(value)
+    value.match(/^ENV\[[\'\"](.*)[\'\"]\]/) ? ENV[$1] : value
   end
 
   def run_command!
