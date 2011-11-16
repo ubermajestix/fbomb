@@ -350,18 +350,40 @@ FBomb {
     call do |*args|
       @cache ||= []
       msg = ""
-      query = Regexp.new "(#{args.join('|').strip})"
       url = "http://imgur.com/gallery.json"
-      json = `curl --location --silent #{ url.inspect }`
-      photos = JSON.parse(json)["gallery"].collect{|p| Map.new(p)}
-      photo = photos.detect{|p| next if @cache.include?(p['hash']); p.title.match(query) } if args.any?
-      search_failed = true if photo.nil? and args.any?
-      photo = photos[rand(photos.length - 1)] unless photo
-      @cache << photo['hash']
-      msg = "http://i.imgur.com/#{photo["hash"]}#{photo.ext}\n" if photo
-      speak("Sorry, couldn't find any more photos for \"#{args.join("|")}\" so here's something random") if search_failed
+      if @hot_photos.nil? || (Time.now.to_i - @hot_photos[:fetched_at] > 10800 if @hot_photos) # get new photos every 3 hours
+        puts "getting hot photos"
+        hot_photos_url = "http://imgur.com/gallery/hot.json"
+        json = `curl --location --silent #{ url.inspect }`
+        @hot_photos = {:photos => JSON.parse(json)["gallery"].collect{|p| Map.new(p)}, :fetched_at => Time.now.to_i}
+      end
+      # Try to search, 
+      if args.any?
+        url << "?q=#{CGI.escape(args.join(' ').strip)}" 
+        json = `curl --location --silent #{ url.inspect }`
+        photos = JSON.parse(json)["gallery"].collect{|p| Map.new(p)}
+        photos.each do |photo|
+          next if @cache.include? photo['hash']
+          @cache << photo['hash']
+          msg = "http://i.imgur.com/#{photo["hash"]}#{photo.ext}\n"
+          @title = photo.title
+          break
+        end
+        search_failed = true if msg.empty?
+      end
+      # If there weren't args or the search failed grab a photo from hot photos
+      if args.empty? || !!search_failed
+        @hot_photos[:photos].each do |photo|
+          next if @cache.include? photo['hash']
+          @cache << photo['hash']
+          msg = "http://i.imgur.com/#{photo["hash"]}#{photo.ext}\n"
+          @title = photo.title
+          break
+        end
+        speak("Sorry, couldn't find any more photos for \"#{args.join("+")}\" so here's something else") if search_failed
+      end
       speak(msg) unless msg.empty?
-      speak(photo.title) unless msg.empty?
+      speak(@title) if @title
     end
   }
 
