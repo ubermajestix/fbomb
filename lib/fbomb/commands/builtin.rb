@@ -313,5 +313,57 @@ FBomb {
       end
     end
   }
+##
+#
+  command(:youtube){
+    setup{ require "google-search" }
+
+    call do |*args|
+      msg = ""
+      query = CGI.escape(args.join(' ').strip)
+      videos = Google::Search::Video.new(:query => query)
+      puts "="*45
+      puts videos.inspect
+      puts "="*45
+      @cache ||= []
+      if videos.any?
+        videos.each do |result|
+          uri = CGI.unescape(result.uri)
+          match = uri.match(/(http:\/\/www.youtube.com\/watch\?)(.+)/)
+          video_id = match[2].split('&').first
+          uri = match[1] + video_id
+          next if @cache.include? video_id
+          @cache << video_id
+          msg = "#{ uri }\n"
+          break
+        end
+      else
+        msg = "No results for: #{query}"
+      end
+      speak(msg) unless msg.empty?
+    end
+  }
+##
+#
+    command(:imgur){
+
+    call do |*args|
+      @cache ||= []
+      msg = ""
+      query = Regexp.new "(#{args.join('|').strip})"
+      url = "http://imgur.com/gallery.json"
+      json = `curl --location --silent #{ url.inspect }`
+      photos = JSON.parse(json)["gallery"].collect{|p| Map.new(p)}
+      photo = photos.detect{|p| next if @cache.include?(p['hash']); p.title.match(query) } if args.any?
+      search_failed = true if photo.nil? and args.any?
+      photo = photos[rand(photos.length - 1)] unless photo
+      @cache << photo['hash']
+      msg = "http://i.imgur.com/#{photo["hash"]}#{photo.ext}\n" if photo
+      speak("Sorry, couldn't find any more photos for \"#{args.join("|")}\" so here's something random") if search_failed
+      speak(msg) unless msg.empty?
+      speak(photo.title) unless msg.empty?
+    end
+  }
+
 }
 
