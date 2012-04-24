@@ -92,7 +92,8 @@ Main {
       FBomb::Command.room = @room
       @room.join
       at_exit{ @room.leave }
-      FBomb::Command.table["/in_da_house"].call
+      # dickburt says 'howdy folks' everytime it reconnects, maybe 2-5 times/day
+      #FBomb::Command.table["/in_da_house"].call
 
       url = URI.parse("http://#{ @token }:x@streaming.campfirenow.com//room/#{ @room.id }/live.json")
 
